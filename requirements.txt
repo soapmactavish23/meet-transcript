@@ -1,0 +1,11 @@
+openai
+python-dotenv
+yfinance
+pandas
+matplotlib
+Pillow
+pyaudio
+SpeechRecognition
+sounddevice
+playsound==1.2.2
+streamlit
