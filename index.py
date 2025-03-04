@@ -1,13 +1,20 @@
 from pathlib import Path
 
+import queue
 import openai
+import time
 import streamlit as st
+from streamlit_webrtc import WebRtcMode, webrtc_streamer
 from moviepy.video.io.VideoFileClip import VideoFileClip  # Importação corrigida
 from dotenv import load_dotenv, find_dotenv
 
 # Carregar variáveis de ambiente
 _ = load_dotenv(find_dotenv())
 client = openai.OpenAI()
+
+@st.cache_data
+def get_ice_servers():
+    return [{'urls': ['stun:stun.l.google.com:19302']}]
 
 # Diretórios temporários
 PASTA_TEMP = Path(__file__).parent / 'temp'
@@ -17,7 +24,29 @@ ARQUIVO_VIDEO_TEMP = PASTA_TEMP / 'video.mp4'
 
 
 def transcreve_tab_mic():
-    st.markdown('Transcreve microfone')
+    webrtx_ctx = webrtc_streamer(
+        key='recebe_audio',
+        mode=WebRtcMode.SENDONLY,
+        audio_receiver_size=1024,
+        rtc_configuration={'iceServers': get_ice_servers()},
+        media_stream_constraints={'video': False, 'audio': True}
+    )
+
+    if not webrtx_ctx.state.playing:
+        return
+
+    container = st.empty()
+    container.markdown('Comece a falar...')
+    while True:
+        if webrtx_ctx.audio_receiver:
+            try:
+                frames_de_audio = webrtx_ctx.audio_receiver.get_frames(timeout=1)
+            except queue.Empty:
+                time.sleep(0.1)
+                continue
+            container.markdown(f'Frames recebidos {len(frames_de_audio)}')
+        else:
+            break
 
 
 def transcreve_tab_video():
